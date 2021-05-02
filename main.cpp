@@ -8,6 +8,7 @@
 
 struct CellGrid {
     bool* cell_map;
+    bool* temp_map;
     uint width;
     uint height;
 
@@ -15,18 +16,19 @@ struct CellGrid {
         width = _width;
         height = _height;
         cell_map = new bool[width*height];
+        temp_map = new bool[width*height];
     }
 
     void next_generation(bool* new_location) {
         for (uint y = 0; y < height; ++y) {
             for (uint x = 0; x < width; ++x) {
                 // Get neighbours
-                int neighbours = 0;
-                for (int ry = -1; ry <= 1; ++ry) {
-                    for (int rx = -1; rx <= 1; ++rx) {
-                        if (x + rx > width || x + rx < 0 || y + ry > width || y + ry < 0 || (rx == 0 && ry == 0)) continue;
-
-                        neighbours += cell_map[height * (x + rx) + (y + ry)];
+                int neighbours = 0 - cell_map[height * x + y];
+                const uint max_x = (x+1==width) ? width : x+1;
+                const uint max_y = (y+1==height) ? height : y+1;
+                for (uint ry = (y == 0) ? 0 : y-1; ry <= max_y; ++ry) {
+                    for (uint rx = (x == 0) ? 0 : x-1; rx <= max_x; ++rx) {
+                        neighbours += cell_map[height * rx + ry];
                     }
                 }
                 
@@ -52,30 +54,29 @@ struct CellGrid {
     }
 
     void update() {
-        bool* temp_map = new bool[width*height];
         next_generation(temp_map);
         memcpy(cell_map, temp_map, (width*height) * sizeof *temp_map);
-        delete[] temp_map;
     }
 
     ~CellGrid() {
         delete[] cell_map;
+        delete[] temp_map;
     }
 };
 
 int main() {
+    uint width = 1000, height = 1000;
     srand(time(NULL));
-    CellGrid grid(100,100);
+    CellGrid grid(width,height);
     sf::RenderWindow window(sf::VideoMode(1000,1000), "Conway's Game of Life");
-    window.setFramerateLimit(60);
-    GridUI ui(100, 100);
+    //window.setFramerateLimit(30);
+    GridUI ui(width, height);
 
-    for (int i = 0; i < 100*100; ++i) {
+    for (int i = 0; i < width*height; ++i) {
         if (rand() % 10 + 1 <= 5) {
             grid.cell_map[i] = true;
         }
     }
-    //print_grid(grid);
 
     while (window.isOpen()) {
         sf::Event event;
@@ -88,14 +89,8 @@ int main() {
         grid.update();
         ui.update_vertices(grid.cell_map);
 
-        window.clear(sf::Color::Blue);
+        window.clear();
         window.draw(ui);
         window.display();
     }
-
-    //grid.update();
-    //system("clear");
-    //print_grid(grid);
-    //std::this_thread::sleep_for(std::chrono::seconds(1));
-    
 }
